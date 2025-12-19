@@ -13,12 +13,17 @@ A single-node Solana fork (gorchain, based on **stock Agave**) that automaticall
 
 ## System Components
 
-| Component | Repo | Purpose |
-|-----------|------|---------|
-| **Sweep** | gorchain (this repo) | Moves SOL from validator → vault each slot |
-| **Vault** | jito-restaking fork (separate) | Tracks VRT shares, enables proportional claims |
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **Sweep** | `gorchain/` subdir | Moves SOL from validator → vault each slot |
+| **Vault** | `jito-restaking-fork` branch | Tracks VRT shares, enables proportional claims |
 
 Both are required. System transfer alone cannot distribute to multiple recipients.
+
+**Repo Structure**:
+- `main` / `claude/*` branches: Documentation, planning, skills
+- `gorchain/` subdir: Validator fork (based on stock Agave)
+- `jito-restaking-fork` branch: Vault program (forked from jito-foundation/restaking)
 
 ---
 
@@ -163,15 +168,25 @@ We hook into these existing patterns.
 
 ---
 
-## Part 2: Vault (Separate Repo)
+## Part 2: Vault (`jito-restaking-fork` branch)
 
-The Jito Restaking fork is **required** for distribution but implemented separately:
+The Jito Restaking fork is **required** for distribution. Code is on the `jito-restaking-fork` branch.
+
+```bash
+git checkout jito-restaking-fork
+```
 
 | Jito Restaking (standard) | Payout Vault (fork) |
 |---------------------------|---------------------|
 | Anyone deposits SOL | Only sweep deposits (from validator) |
 | Depositor receives VRT | Admin allocates VRT to recipients |
 | Open market | Controlled distribution |
+
+**Key directories**:
+- `vault_program/` - Main vault program (modify for sweep-only deposits)
+- `vault_core/` - Account definitions
+- `vault_sdk/` - Client SDK
+- `restaking_program/` - NCN/operator logic (may simplify/remove)
 
 Key vault functions needed:
 - Accept deposits from sweep
@@ -208,5 +223,8 @@ Plus tests: ~100-150 lines
 
 ## References
 
-- **gorchain**: https://github.com/gorbagana-dev/gorchain (branch: `rebase-on-3.x`)
-- **Jito Restaking**: https://github.com/jito-foundation/restaking (to be forked)
+- **This repo**: https://github.com/gorbagana-dev/Payout
+  - `jito-restaking-fork` branch: Vault program fork
+  - `gorchain/` subdir: Validator fork
+- **Upstream gorchain**: https://github.com/gorbagana-dev/gorchain (branch: `rebase-on-3.x`)
+- **Upstream Jito Restaking**: https://github.com/jito-foundation/restaking
