@@ -1,0 +1,99 @@
+# Exclude files that are not needed for compilation
+# This improves Docker build cache efficiency
+
+# We're explicitly copying workspace directories in Dockerfile
+# Just exclude the obvious non-essential files
+
+# Documentation and markdown files
+*.md
+docs/
+local_development_docs/
+changelog/
+
+# Scripts not needed for compilation
+scripts/
+multinode-demo/
+net/
+ci/
+system-test/
+
+# Runtime scripts that will be copied separately in final stage
+run-test-validator.sh
+test-*.sh
+run-*.sh
+*-test.sh
+
+# Development and deployment files
+docker-compose.yml
+Dockerfile
+gitlog.txt
+*.log
+data/
+gor-bridge/
+squads-deployment*/
+token-2022-test/
+token2022-test/
+
+# Build artifacts and caches
+target/
+.git/
+.gitignore
+
+# Test and development files
+*.test
+
+# Configuration files not needed for build
+*.yml
+*.yaml
+!primordial.yml
+*.json
+!Cargo.lock
+!package.json
+!tsconfig.json
+vercel.json
+nginx.conf
+
+# Development and deployment specific files
+docker-compose.yml
+dev-wallet.json
+private_key_for_origin_cert
+program-data.json
+
+# Temporary and generated files
+data/
+gor-bridge/
+squads-deployment*/
+token-2022-test/
+token2022-test/
+
+# Web and frontend files (if any)
+web3.js/
+*.html
+*.css
+*.js
+!**/src/**/*.js
+*.ts
+!**/src/**/*.ts
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Rust specific excludes (keep source)
+# We want to keep:
+# - Cargo.toml files
+# - Cargo.lock
+# - src/ directories
+# - benches/ directories  
+# - tests/ directories
+# - proto/ directories
+# - rust-toolchain.toml
+# - rustfmt.toml
+# - clippy.toml
