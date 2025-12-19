@@ -1,0 +1,139 @@
+name: Deploy Gor Validator
+
+on:
+  push:
+    branches: [workflow, gorbagana]  # Combined branches from original conditions
+    paths:
+      - '**/*.rs'
+      - '**/*.toml'
+      - '**/*.yml'
+      - '**/*.yaml'
+      - '**/*.sh'
+      - '**/Dockerfile'
+      - '**/docker-compose.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'  # Aligned default to first option
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+      server_host:
+        description: 'Override server host (optional)'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: ${{ inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4  # Clones repo on runner with built-in auth
+
+      - name: Configure deployment environment
+        id: config
+        run: |
+          SERVER_HOST="${{ inputs.server_host || secrets.SERVER_HOST }}"
+          DEPLOY_ENV="${{ inputs.environment }}"
+          if [ -z "$DEPLOY_ENV" ]; then
+            case "${{ github.ref_name }}" in
+              main|gorbagana)
+                DEPLOY_ENV="production"
+                ;;
+              *)
+                DEPLOY_ENV="development"
+                ;;
+            esac
+          fi
+          echo "server_host=$SERVER_HOST" >> $GITHUB_OUTPUT
+          echo "deploy_env=$DEPLOY_ENV" >> $GITHUB_OUTPUT
+          echo "deploy_path=${{ secrets.DEPLOY_PATH }}" >> $GITHUB_OUTPUT
+          echo "server_user=${{ secrets.SERVER_USER }}" >> $GITHUB_OUTPUT
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ steps.config.outputs.server_host }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.config.outputs.server_host }}
+          username: ${{ steps.config.outputs.server_user }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            # Prepare directory and prune
+            mkdir -p ~/gorchain-deploy
+            cd ~/gorchain-deploy
+            docker system prune -f >/dev/null 2>&1 || true
+            
+            # Backup existing deployment
+            if [ -d "gorchain" ]; then
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              mv gorchain gorchain_backup_$TIMESTAMP
+              ls -d gorchain_backup_* 2>/dev/null | head -n -3 | xargs -r rm -rf || true
+            fi
+            
+            # Create new dir (files will be rsynced later)
+            mkdir -p gorchain
+
+      - name: Sync files to server
+        run: |
+          rsync -avz --delete -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new" \
+            ./ ${{ steps.config.outputs.server_user }}@${{ steps.config.outputs.server_host }}:~/gorchain-deploy/gorchain/
+
+      - name: Execute deployment on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.config.outputs.server_host }}
+          username: ${{ steps.config.outputs.server_user }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 60m
+          script: |
+            set -e
+            cd ~/gorchain-deploy/gorchain
+            export ENVIRONMENT=${{ steps.config.outputs.deploy_env }}
+            docker compose down -v 2>/dev/null || true
+            docker compose up -d 2>/dev/null
+            
+            # Improved verification: Poll for up to 2 minutes
+            for i in {1..24}; do
+              if docker compose ps | grep -q "Up"; then
+                echo "Services are up"
+                exit 0
+              fi
+              sleep 5
+            done
+            docker compose logs
+            echo "Services failed to start"
+            exit 1
+
+      - name: Deployment notification
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Check if the job succeeded
+            const jobStatus = '${{ job.status }}';
+            if (jobStatus !== 'success') {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `Deployment failed for ${{ steps.config.outputs.deploy_env }}. Check logs.`
+              });
+            } else {
+              console.log('Deployment completed successfully');
+            }

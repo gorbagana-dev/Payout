@@ -1,0 +1,68 @@
+services:
+  agave-validator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # user: "2000:2000"  # Let Dockerfile handle user - agave user (UID 1000)
+    ports:
+      - "8899:8899" # RPC JSON
+      - "8900:8900" # RPC pubsub
+      - "8001:8001/udp" # Gossip UDP
+      - "8001:8001/tcp" # Gossip TCP
+      - "8003:8003/udp" # TPU
+      - "9900:9900" # Faucet
+    volumes:
+      - ./data/config:/agave/config
+      - ./data/ledger:/agave/ledger
+      - ./data/accounts:/agave/accounts
+    environment:
+      - CLUSTER_TYPE=testnet
+      - RUST_LOG=info
+      - FAUCET_LAMPORTS=500000000000000000
+      - RPC_PORT=8899
+      - FAUCET_PORT=9900
+      - GOSSIP_PORT=8001
+      - ENABLE_FAUCET=true
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 1000000
+        hard: 1000000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8899/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # HTTPS Proxy for external access (Envoy)
+  envoy-proxy:
+    image: envoyproxy/envoy:v1.31-latest
+    ports:
+      - "443:443" # HTTPS
+      - "80:80" # HTTP (redirect to HTTPS)
+      - "9901:9901" # Envoy admin
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./origin.cert.pem:/etc/envoy/tls/origin.cert.pem:ro
+      - ./private_key_for_origin_cert:/etc/envoy/tls/origin.key:ro
+    depends_on:
+      - agave-validator
+    command: ["-c", "/etc/envoy/envoy.yaml", "--log-level", "debug"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9901/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Web UI for monitoring (you can remove this if not needed)
+  # agave-explorer:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "3000:80"
+  #   volumes:
+  #     - ./explorer:/usr/share/nginx/html
+  #   depends_on:
+  #     - agave-validator

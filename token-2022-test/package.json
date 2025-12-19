@@ -1,0 +1,36 @@
+{
+  "name": "token-2022-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/create-token.ts",
+    "realloc": "ts-node src/create-token-with-reallocation.ts",
+    "metaplex": "ts-node src/create-token-with-metaplex.ts",
+    "simple": "ts-node src/create-simple-token.ts",
+    "mint": "ts-node src/mint-tokens.ts",
+    "dev": "ts-node --watch src/create-token.ts",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "verify-metadata": "ts-node src/verify-metadata.ts",
+    "upload-pinata": "ts-node src/upload-to-pinata.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.2.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.2.0",
+    "@metaplex-foundation/umi-rpc-web3js": "^1.2.0",
+    "@metaplex-foundation/umi-web3js-adapters": "^1.2.0",
+    "@solana/spl-token": "^0.4.13",
+    "@solana/web3.js": "^1.98.4",
+    "@types/node": "^24.3.0",
+    "@types/node-fetch": "^2.6.13",
+    "form-data": "^4.0.4",
+    "node-fetch": "^3.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
