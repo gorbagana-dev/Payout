@@ -4,6 +4,17 @@
 
 A single-node Solana fork that automatically distributes validator fees/rewards to designated accounts on a per-block basis.
 
+## Repository Structure
+
+```
+Payout/                     # Monorepo
+├── gorchain/               # Validator fork (based on stock Agave)
+├── restaking/              # Jito restaking fork (vault program)
+├── .claude/                # Claude Code skills & settings
+├── .github/                # CI/CD workflows
+└── PLAN.md                 # This file
+```
+
 ## Architecture
 
 ```
@@ -36,26 +47,32 @@ A single-node Solana fork that automatically distributes validator fees/rewards 
 
 ## Components
 
-### 1. Base: Jito-Solana Fork
+### 1. Validator (`gorchain/`)
 
-Starting from `gorbagana-dev/gorchain` branch `rebase-on-3.x`.
-
-Jito-Solana adds ~13,000 lines to stock Agave. For this project, we need a minimal subset (~3,000-4,000 lines) focused on:
+Stock Agave fork with sweep modifications. Key changes (~400 lines):
 
 - Slot boundary detection
-- End-of-block transaction injection
-- Account locking for sweep transactions
+- End-of-block sweep transaction injection
+- System transfer to vault
 
-### 2. Genesis-Deployed Programs
+### 2. Vault (`restaking/`)
 
-Programs deployed at genesis using the existing `program-binaries/` pattern from jito-solana:
+Jito restaking fork for fee distribution. Key directories:
+
+- `restaking/vault_program/` - Main vault program
+- `restaking/vault_core/` - Account definitions
+- `restaking/vault_sdk/` - Client SDK
+
+### 3. Genesis-Deployed Programs
+
+Programs deployed at genesis using the existing `program-binaries/` pattern:
 
 | Program | Purpose |
 |---------|---------|
 | `sweep` | Transfers SOL from validator to vault |
 | `payout_vault` | Jito restaking fork for fee distribution |
 
-#### File: `program-binaries/src/lib.rs`
+#### File: `gorchain/program-binaries/src/lib.rs`
 
 ```rust
 pub mod sweep {
@@ -80,9 +97,9 @@ static SPL_PROGRAMS: &[(Pubkey, Pubkey, &[u8])] = &[
 ];
 ```
 
-### 3. Validator Client Modifications
+### 4. Validator Client Modifications
 
-#### New: `core/src/sweep_manager.rs` (~150 lines)
+#### New: `gorchain/core/src/sweep_manager.rs` (~150 lines)
 
 ```rust
 use solana_program_binaries::{sweep, payout_vault};
@@ -108,7 +125,7 @@ impl SweepManager {
 }
 ```
 
-#### Modify: `core/src/banking_stage.rs`
+#### Modify: `gorchain/core/src/banking_stage.rs`
 
 Add slot boundary hook:
 
@@ -128,7 +145,7 @@ fn maybe_execute_sweep(&self, bank: &Arc<Bank>) {
 }
 ```
 
-### 4. Jito Restaking Fork (Payout Vault)
+### 5. Jito Restaking Fork (`restaking/`)
 
 Modifications to standard Jito restaking:
 
@@ -147,19 +164,19 @@ Key functions:
 
 | Component | File | Lines | Status |
 |-----------|------|-------|--------|
-| **Validator** | | | |
-| Sweep Manager | `core/src/sweep_manager.rs` | ~150 | New |
-| Banking Stage Hook | `core/src/banking_stage.rs` | ~50 | Modify |
-| Consumer Execute | `core/src/banking_stage/consumer.rs` | ~30 | Modify |
-| Main Init | `validator/src/main.rs` | ~5 | Modify |
-| **Genesis** | | | |
-| Program IDs | `program-binaries/src/lib.rs` | ~20 | Modify |
-| Program binaries | `program-binaries/src/programs/*.so` | - | Add 2 files |
-| **Programs** | | | |
-| Sweep Program | `programs/sweep/src/lib.rs` | ~100 | New |
-| Vault Program | `programs/payout_vault/...` | Fork | Modify |
+| **Validator (gorchain/)** | | | |
+| Sweep Manager | `gorchain/core/src/sweep_manager.rs` | ~150 | New |
+| Banking Stage Hook | `gorchain/core/src/banking_stage.rs` | ~50 | Modify |
+| Consumer Execute | `gorchain/core/src/banking_stage/consumer.rs` | ~30 | Modify |
+| Main Init | `gorchain/validator/src/main.rs` | ~5 | Modify |
+| **Genesis (gorchain/)** | | | |
+| Program IDs | `gorchain/program-binaries/src/lib.rs` | ~20 | Modify |
+| Program binaries | `gorchain/program-binaries/src/programs/*.so` | - | Add 2 files |
+| **Vault (restaking/)** | | | |
+| Vault Program | `restaking/vault_program/src/...` | - | Modify |
+| Vault Core | `restaking/vault_core/src/...` | - | Modify |
 
-**Total: ~535 lines of new/modified validator code**
+**Total: ~400 lines of new/modified validator code**
 
 ## Transaction Flow Per Block
 
@@ -184,6 +201,7 @@ VRT holders can claim proportional share
 
 ## References
 
-- **Jito-Solana**: https://github.com/jito-foundation/jito-solana
-- **Jito Restaking**: https://github.com/jito-foundation/restaking
-- **Base fork**: https://github.com/gorbagana-dev/gorchain (branch: `rebase-on-3.x`)
+- **This repo**: https://github.com/gorbagana-dev/Payout
+- **Upstream Jito-Solana**: https://github.com/jito-foundation/jito-solana
+- **Upstream Jito Restaking**: https://github.com/jito-foundation/restaking
+- **Upstream gorchain**: https://github.com/gorbagana-dev/gorchain
