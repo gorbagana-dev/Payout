@@ -27,20 +27,20 @@ Both are required. System transfer alone cannot distribute to multiple recipient
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │              PART 1: VALIDATOR (gorchain) ~400 lines            │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Banking Stage                                            │   │
-│  │  └─ End of Slot → SweepManager.sweep()                  │   │
-│  │       └─ System Transfer: validator → vault              │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Banking Stage                                           │    │
+│  │  └─ End of Slot → SweepManager.sweep()                  │    │
+│  │       └─ System Transfer: validator → vault             │    │
+│  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │              PART 2: VAULT (jito-restaking fork)                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ - Receives swept SOL                                     │   │
-│  │ - Admin allocates VRT to recipients                      │   │
-│  │ - VRT holders claim proportional share                   │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ - Receives swept SOL                                    │    │
+│  │ - Admin allocates VRT to recipients                     │    │
+│  │ - VRT holders claim proportional share                  │    │
+│  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
